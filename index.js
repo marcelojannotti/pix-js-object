@@ -1,11 +1,10 @@
-const Pix = require("./Pix");
-const pix = new Pix(
-  ">CHAVE PIX<",
-  ">DESCRIÇÃO DO PAGAMENTO<",
-  ">NOME DO BENEFICIADO<",
-  ">CIDADE<",
-  ">TXID<",
-  5.5
+pix = new Pix(
+  ">CHAVE PIX<", // Chave pix (email, CPF, CNPJ, telefone, chave aletória)
+  ">NOME DO BENEFICIARIO<", // Nome do beneficiário
+  ">CIDADE<", // Cidade da transação ou do beneficiário
+  ">TXID<", // Identificador do Pagamento
+  5.5 // Valor serparado por ponto
 );
 
-const payload = pix.getPayload();
+alert(pix.getPayload());
+console.log(pix.getPayload());
