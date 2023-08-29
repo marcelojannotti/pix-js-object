@@ -1,77 +1,85 @@
-module.exports = class Pix {
-  constructor(pixKey, description, merchantName, merchantCity, txid, amount) {
-    this.pixKey = pixKey;
-    this.description = description;
-    this.merchantName = merchantName;
-    this.merchantCity = merchantCity;
-    this.txid = txid;
-    this.amount = amount.toFixed(2);
+/*
+ID_MERCHANT_ACCOUNT_INFORMATION_DESCRIPTION
+Removido por não constar no manual PIX do BCB
 
-    this.ID_PAYLOAD_FORMAT_INDICATOR = "00";
-    this.ID_MERCHANT_ACCOUNT_INFORMATION = "26";
-    this.ID_MERCHANT_ACCOUNT_INFORMATION_GUI = "00";
-    this.ID_MERCHANT_ACCOUNT_INFORMATION_KEY = "01";
-    this.ID_MERCHANT_ACCOUNT_INFORMATION_DESCRIPTION = "02";
-    this.ID_MERCHANT_CATEGORY_CODE = "52";
-    this.ID_TRANSACTION_CURRENCY = "53";
-    this.ID_TRANSACTION_AMOUNT = "54";
-    this.ID_COUNTRY_CODE = "58";
-    this.ID_MERCHANT_NAME = "59";
-    this.ID_MERCHANT_CITY = "60";
-    this.ID_ADDITIONAL_DATA_FIELD_TEMPLATE = "62";
-    this.ID_ADDITIONAL_DATA_FIELD_TEMPLATE_TXID = "05";
-    this.ID_CRC16 = "63";
-  }
+https://www.bcb.gov.br/content/estabilidadefinanceira/spb_docs/ManualBRCode.pdf
+(Consultado em 29/08/2023)
+*/
 
-  _getValue(id, value) {
+function Pix (pixKey, /*description,*/ merchantName, merchantCity, txid, amount) {
+  var self = this;
+  this.pixKey = pixKey;
+//  this.description = description;
+  this.merchantName = merchantName;
+  this.merchantCity = merchantCity;
+  this.txid = txid;
+  this.amount = amount.toFixed(2);
+
+  const ID_PAYLOAD_FORMAT_INDICATOR = "00",
+  ID_MERCHANT_ACCOUNT_INFORMATION = "26",
+  ID_MERCHANT_ACCOUNT_INFORMATION_GUI = "00",
+  ID_MERCHANT_ACCOUNT_INFORMATION_KEY = "01",
+  //ID_MERCHANT_ACCOUNT_INFORMATION_DESCRIPTION = "02",
+  ID_MERCHANT_CATEGORY_CODE = "52",
+  ID_TRANSACTION_CURRENCY = "53",
+  ID_TRANSACTION_AMOUNT = "54",
+  ID_COUNTRY_CODE = "58",
+  ID_MERCHANT_NAME = "59",
+  ID_MERCHANT_CITY = "60",
+  ID_ADDITIONAL_DATA_FIELD_TEMPLATE = "62",
+  ID_ADDITIONAL_DATA_FIELD_TEMPLATE_TXID = "05",
+  ID_CRC16 = "63";
+
+  let getValue = function (id, value) {
+    value = value.toString();
     const size = String(value.length).padStart(2, "0");
     return id + size + value;
   }
 
-  _getMechantAccountInfo() {
-    const gui = this._getValue(
-      this.ID_MERCHANT_ACCOUNT_INFORMATION_GUI,
+  let getMechantAccountInfo = function () {
+    const gui = getValue(
+      ID_MERCHANT_ACCOUNT_INFORMATION_GUI,
       "br.gov.bcb.pix"
     );
-    const key = this._getValue(
-      this.ID_MERCHANT_ACCOUNT_INFORMATION_KEY,
-      this.pixKey
+    let key = getValue(
+      ID_MERCHANT_ACCOUNT_INFORMATION_KEY,
+      self.pixKey
     );
-    const description = this._getValue(
-      this.ID_MERCHANT_ACCOUNT_INFORMATION_DESCRIPTION,
-      this.description
+/*    let description = getValue(
+      ID_MERCHANT_ACCOUNT_INFORMATION_DESCRIPTION,
+      self.description
     );
-
-    return this._getValue(
-      this.ID_MERCHANT_ACCOUNT_INFORMATION,
-      gui + key + description
+*/
+    return getValue(
+      ID_MERCHANT_ACCOUNT_INFORMATION,
+      gui + key// + description
     );
   }
 
-  _getAdditionalDataFieldTemplate() {
-    const txid = this._getValue(
-      this.ID_ADDITIONAL_DATA_FIELD_TEMPLATE_TXID,
-      this.txid
+  let getAdditionalDataFieldTemplate = function () {
+    const txid = getValue(
+      ID_ADDITIONAL_DATA_FIELD_TEMPLATE_TXID,
+      self.txid
     );
-    return this._getValue(this.ID_ADDITIONAL_DATA_FIELD_TEMPLATE, txid);
+    return getValue(ID_ADDITIONAL_DATA_FIELD_TEMPLATE, txid);
   }
 
-  getPayload() {
+  this.getPayload = function() {
     const payload =
-      this._getValue(this.ID_PAYLOAD_FORMAT_INDICATOR, "01") +
-      this._getMechantAccountInfo() +
-      this._getValue(this.ID_MERCHANT_CATEGORY_CODE, "0000") +
-      this._getValue(this.ID_TRANSACTION_CURRENCY, "986") +
-      this._getValue(this.ID_TRANSACTION_AMOUNT, this.amount) +
-      this._getValue(this.ID_COUNTRY_CODE, "BR") +
-      this._getValue(this.ID_MERCHANT_NAME, this.merchantName) +
-      this._getValue(this.ID_MERCHANT_CITY, this.merchantCity) +
-      this._getAdditionalDataFieldTemplate();
-
-    return payload + this._getCRC16(payload);
+      getValue(ID_PAYLOAD_FORMAT_INDICATOR, "01") +
+      getMechantAccountInfo() +
+      getValue(ID_MERCHANT_CATEGORY_CODE, "0000") +
+      getValue(ID_TRANSACTION_CURRENCY, "986") +
+      getValue(ID_TRANSACTION_AMOUNT, self.amount) +
+      getValue(ID_COUNTRY_CODE, "BR") +
+      getValue(ID_MERCHANT_NAME, self.merchantName) +
+      getValue(ID_MERCHANT_CITY, self.merchantCity) +
+      getAdditionalDataFieldTemplate();
+    
+    return payload + getCRC16(payload);
   }
 
-  _getCRC16(payload) {
+  let getCRC16 = function (payload) {
     function ord(str) {
       return str.charCodeAt(0);
     }
@@ -83,11 +91,12 @@ module.exports = class Pix {
     }
 
     //ADICIONA DADOS GERAIS NO PAYLOAD
-    payload = payload + this.ID_CRC16 + "04";
+    payload = payload + ID_CRC16 + "04";
 
     //DADOS DEFINIDOS PELO BACEN
-    let polinomio = 0x1021;
-    let resultado = 0xffff;
+    const POLIMONIO = 0x1021;
+    const RESULTADO = 0xffff;
+    let resultado = RESULTADO;
     let length;
 
     //CHECKSUM
@@ -95,13 +104,13 @@ module.exports = class Pix {
       for (let offset = 0; offset < length; offset++) {
         resultado ^= ord(payload[offset]) << 8;
         for (let bitwise = 0; bitwise < 8; bitwise++) {
-          if ((resultado <<= 1) & 0x10000) resultado ^= polinomio;
-          resultado &= 0xffff;
+          if ((resultado <<= 1) & 0x10000) resultado ^= POLIMONIO;
+          resultado &= RESULTADO;
         }
       }
     }
 
     //RETORNA CÓDIGO CRC16 DE 4 CARACTERES
-    return this.ID_CRC16 + "04" + dechex(resultado).toUpperCase();
+    return ID_CRC16 + "04" + dechex(resultado).toUpperCase();
   }
 };
